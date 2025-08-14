@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Automatic Lights On/Off – Interactive Demo</title>
+<style>
+  :root{
+    --bg:#0b1220;
+    --card:#121a2b;
+    --muted:#7b8aa0;
+    --text:#eaf2ff;
+    --accent:#5eead4;
+    --accent-2:#22d3ee;
+    --danger:#f87171;
+    --ok:#34d399;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+    background:
+      radial-gradient(1200px 600px at 80% -10%, #1b2640 0%, transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, #0f1729 0%, transparent 60%),
+      var(--bg);
+    color:var(--text);
+    min-height:100dvh;
+    display:grid;
+    place-items:center;
+    padding:32px;
+  }
+  .wrap{
+    width:min(1100px, 96vw);
+    display:grid;
+    grid-template-columns: 380px 1fr;
+    gap:24px;
+  }
+  @media (max-width: 900px){
+    .wrap{grid-template-columns: 1fr; }
+  }
+  .card{
+    background: linear-gradient(180deg, #0f1628 0%, var(--card) 100%);
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.03);
+    padding:20px;
+  }
+  h1{
+    font-weight:700;
+    font-size: clamp(20px, 2.6vw, 28px);
+    letter-spacing:.2px;
+    margin: 0 0 8px;
+  }
+  .sub{
+    color:var(--muted);
+    font-size:14px;
+    margin-bottom:18px;
+  }
+  .bulb-area{
+    display:grid;
+    place-items:center;
+    padding:16px 0 6px;
+  }
+  .bulb{
+    width:160px; aspect-ratio:1/1;
+    border-radius:50%;
+    position:relative;
+    background: radial-gradient(60% 60% at 50% 35%, #3a3f55, #1b2236);
+    border: 1px solid rgba(255,255,255,.08);
+    transition: filter .2s ease, transform .2s ease, box-shadow .2s ease, background .2s ease;
+  }
+  .bulb.on{
+    background:
+      radial-gradient(40% 35% at 50% 35%, #fff7ce, #ffe17a),
+      radial-gradient(75% 70% at 50% 50%, #ffd86b, #ffaa00);
+    box-shadow:
+      0 0 16px rgba(255,225,122,.7),
+      0 0 60px 20px rgba(255,213,96,.18),
+      inset 0 10px 40px rgba(255,255,255,.35);
+    filter: saturate(1.1) brightness(1.03);
+    transform: translateY(-1px);
+  }
+  .socket{
+    position:absolute; left:50%; transform:translateX(-50%);
+    bottom:-26px; width:64px; height:42px; border-radius:12px;
+    background: linear-gradient(180deg, #2a334f, #1a2238);
+    border:1px solid rgba(255,255,255,.06);
+    box-shadow: 0 6px 24px rgba(0,0,0,.45);
+  }
+  .glow{
+    position:absolute; inset:-80px; border-radius:50%;
+    background: radial-gradient(closest-side, rgba(255,218,120,.22), transparent 70%);
+    opacity:0; transition:opacity .25s ease;
+    pointer-events:none;
+  }
+  .bulb.on + .glow{ opacity:1; }
+
+  .status{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-top:30px; font-size:14px; color:var(--muted);
+  }
+  .pill{
+    padding:.35rem .65rem; border-radius:999px; font-weight:600; letter-spacing:.2px;
+    border:1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.03);
+  }
+  .pill.on{ color:#0b190f; background: linear-gradient(180deg, #b8f5c5, #67e8a6); border-color: rgba(0,0,0,.08);}
+  .pill.off{ color:#1a0e0e; background: linear-gradient(180deg, #ffd2d2, #f6a6a6); border-color: rgba(0,0,0,.08);}
+
+  .controls{ display:grid; gap:14px; }
+  .group{ display:grid; gap:10px; padding:12px; border-radius:16px; background: rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.06); }
+  .group h3{ margin:0; font-size:14px; color:#c7d4ea; letter-spacing:.2px; }
+  .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+  label{ font-size:13px; color:#cfd9ee; }
+  input[type="range"]{ width: 220px; }
+  .value{ font-variant-numeric: tabular-nums; font-weight:600; color:var(--accent); }
+  .switch{
+    appearance:none; width:48px; height:28px; border-radius:999px; position:relative;
+    background:#2a334f; border:1px solid rgba(255,255,255,.10); cursor:pointer; outline: none; transition:background .2s ease;
+  }
+  .switch::after{
+    content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%;
+    background:#c2ccdd; transition:left .2s ease, background .2s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,.4);
+  }
+  .switch:checked{ background: linear-gradient(180deg, #67e8a6, #34d399); }
+  .switch:checked::after{ left:23px; background:white; }
+  .seg{
+    display:flex; background:#0f1729; border:1px solid rgba(255,255,255,.08); border-radius:12px; overflow:hidden;
+  }
+  .seg input{ display:none; }
+  .seg label{
+    flex:1; text-align:center; padding:8px 10px; cursor:pointer; font-weight:600; color:#b8c7e6;
+  }
+  .seg input:checked + label{ background: linear-gradient(180deg, #12213a, #0f2038); color:white; }
+  .hint{ color:var(--muted); font-size:12px; }
+  .kbd{
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    border:1px solid rgba(255,255,255,.15);
+    background: rgba(255,255,255,.04);
+    border-radius:8px; padding:2px 6px; font-size:12px; color:#cfe4ff;
+  }
+  .reasons{ color:#b9c7de; font-size:13px; margin-top:6px; }
+  .footer{ text-align:center; color:var(--muted); font-size:12px; margin-top:10px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- VISUAL -->
+    <section class="card">
+      <h1>Automatic Lights On/Off</h1>
+      <p class="sub">Simulate a smart light that reacts to <strong>ambient light</strong>, <strong>motion</strong>, and a <strong>time schedule</strong>. Switch between <em>Auto</em> and <em>Manual</em> modes.</p>
+
+      <div class="bulb-area" aria-live="polite">
+        <div id="bulb" class="bulb off" role="img" aria-label="Light bulb"></div>
+        <div class="glow"></div>
+        <div class="status">
+          <span id="onOffPill" class="pill off">OFF</span>
+          <span id="modePill" class="pill">Mode: Auto</span>
+          <span class="pill" id="clockPill">--:--</span>
+        </div>
+        <div class="reasons" id="reasons"></div>
+      </div>
+    </section>
+
+    <!-- CONTROLS -->
+    <section class="card controls" aria-label="Controls">
+      <div class="group">
+        <h3>Mode</h3>
+        <div class="seg" role="tablist" aria-label="Mode selector">
+          <input type="radio" id="mode-auto" name="mode" value="auto" checked />
+          <label role="tab" for="mode-auto">Auto</label>
+          <input type="radio" id="mode-manual" name="mode" value="manual" />
+          <label role="tab" for="mode-manual">Manual</label>
+        </div>
+        <div class="row">
+          <label for="manualSwitch">Manual Switch</label>
+          <input id="manualSwitch" type="checkbox" class="switch" disabled />
+          <span class="hint">Enabled only in Manual mode</span>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Ambient Light</h3>
+        <div class="row">
+          <label for="ambient">Brightness (0 = dark, 100 = bright)</label>
+          <input id="ambient" type="range" min="0" max="100" value="35" />
+          <span class="value" id="ambientVal">35</span>
+        </div>
+        <div class="row">
+          <label for="threshold">Turn on when ambient &lt; threshold</label>
+          <input id="threshold" type="range" min="5" max="80" value="40" />
+          <span class="value" id="thresholdVal">40</span>
+        </div>
+        <p class="hint">Try dragging the sliders to simulate day ↔ night.</p>
+      </div>
+
+      <div class="group">
+        <h3>Motion</h3>
+        <div class="row">
+          <label for="requireMotion">Require motion to turn on</label>
+          <input id="requireMotion" type="checkbox" class="switch" checked />
+          <span class="hint">Common for energy saving</span>
+        </div>
+        <div class="row">
+          <button id="tapMotion" type="button" class="kbd" title="Simulate a person walking by">Wave hand</button>
+          <label><input type="checkbox" id="autoPulse" /> auto-pulse every 8s</label>
+          <span class="hint">Motion holds for 6 seconds</span>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Schedule</h3>
+        <div class="row">
+          <label><input type="checkbox" id="schedEnable" checked /> Enable schedule</label>
+        </div>
+        <div class="row">
+          <label for="start">Start</label>
+          <input id="start" type="time" value="18:30" />
+          <label for="end">End</label>
+          <input id="end" type="time" value="06:30" />
+        </div>
+        <p class="hint">Schedule can cross midnight. Example: 18:30 → 06:30.</p>
+      </div>
+
+      <div class="footer">
+        Tip: For a quick test, set <span class="kbd">ambient</span> below the <span class="kbd">threshold</span> or click <span class="kbd">Wave hand</span>.
+      </div>
+    </section>
+  </div>
+
+<script>
+  // --- State ---
+  const el = id => document.getElementById(id);
+  const bulb = el('bulb');
+  const onOffPill = el('onOffPill');
+  const modePill = el('modePill');
+  const clockPill = el('clockPill');
+  const reasonsEl = el('reasons');
+
+  const controls = {
+    modeAuto: el('mode-auto'),
+    modeManual: el('mode-manual'),
+    manualSwitch: el('manualSwitch'),
+    ambient: el('ambient'),
+    threshold: el('threshold'),
+    ambientVal: el('ambientVal'),
+    thresholdVal: el('thresholdVal'),
+    requireMotion: el('requireMotion'),
+    tapMotion: el('tapMotion'),
+    autoPulse: el('autoPulse'),
+    schedEnable: el('schedEnable'),
+    start: el('start'),
+    end: el('end')
+  };
+
+  let motionUntil = 0; // timestamp ms until which motion is considered active
+
+  // --- Helpers ---
+  function nowMinutes(){
+    const d = new Date();
+    return d.getHours()*60 + d.getMinutes();
+  }
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function clockStr(){
+    const d=new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function withinSchedule(startHHMM, endHHMM, currentMins){
+    // Parse "HH:MM"
+    const [sH,sM] = startHHMM.split(':').map(Number);
+    const [eH,eM] = endHHMM.split(':').map(Number);
+    const s = sH*60 + sM, e = eH*60 + eM, c = currentMins;
+    if(s === e) return false;        // zero-length window
+    if(s < e) return c >= s && c < e; // same day
+    // Crosses midnight
+    return c >= s || c < e;
+  }
+  function setBulb(on, reason){
+    bulb.classList.toggle('on', on);
+    onOffPill.textContent = on ? 'ON' : 'OFF';
+    onOffPill.classList.toggle('on', on);
+    onOffPill.classList.toggle('off', !on);
+    reasonsEl.innerHTML = reason;
+  }
+
+  function updateUIValues(){
+    controls.ambientVal.textContent = controls.ambient.value;
+    controls.thresholdVal.textContent = controls.threshold.value;
+    modePill.textContent = `Mode: ${controls.modeAuto.checked ? 'Auto' : 'Manual'}`;
+    controls.manualSwitch.disabled = controls.modeAuto.checked;
+    clockPill.textContent = clockStr();
+  }
+
+  // --- Core Logic ---
+  function evaluate(){
+    updateUIValues();
+
+    const mode = controls.modeAuto.checked ? 'auto' : 'manual';
+    const ambient = Number(controls.ambient.value);
+    const threshold = Number(controls.threshold.value);
+    const isDark = ambient < threshold;
+
+    const motionActive = Date.now() < motionUntil;
+    const requireMotion = controls.requireMotion.checked;
+
+    const scheduleEnabled = controls.schedEnable.checked;
+    const inSchedule = scheduleEnabled
+      ? withinSchedule(controls.start.value, controls.end.value, nowMinutes())
+      : false;
+
+    // Decision tree
+    let shouldOn = false;
+    let reasons = [];
+
+    if(mode === 'manual'){
+      shouldOn = controls.manualSwitch.checked;
+      reasons.push(`Manual switch is <b>${shouldOn ? 'ON' : 'OFF'}</b>.`);
+      setBulb(shouldOn, reasons.join(' '));
+      return;
+    }
+
+    // AUTO MODE:
+    // Rule: Turn ON when (Dark OR InSchedule) AND ( !requireMotion OR motionActive )
+    const condDarkOrSched = (isDark || inSchedule);
+    const condMotion = (!requireMotion || motionActive);
+
+    shouldOn = condDarkOrSched && condMotion;
+
+    reasons.push(`Ambient <b>${ambient}</b> vs threshold <b>${threshold}</b>: ${isDark ? '<span class="pill on">Dark</span>' : '<span class="pill off">Bright</span>'}.`);
+    if(scheduleEnabled){
+      reasons.push(`Schedule ${controls.start.value} → ${controls.end.value}: ${inSchedule ? '<span class="pill on">Active now</span>' : '<span class="pill off">Inactive</span>'}.`);
+    } else {
+      reasons.push(`Schedule <span class="pill off">Disabled</span>.`);
+    }
+    if(requireMotion){
+      reasons.push(`Motion required: ${motionActive ? '<span class="pill on">Detected</span>' : '<span class="pill off">None</span>'}.`);
+    } else {
+      reasons.push(`Motion not required.`);
+    }
+
+    setBulb(shouldOn, reasons.join(' '));
+  }
+
+  // --- Motion simulation ---
+  function pulseMotion(ms=6000){
+    motionUntil = Date.now() + ms;
+    // Small visual nudge on the bulb when motion is detected
+    bulb.style.transform = 'translateY(-2px) scale(1.01)';
+    setTimeout(()=>{ bulb.style.transform=''; }, 160);
+  }
+
+  // Auto-pulse timer
+  let autopulseTimer = null;
+  function toggleAutoPulse(on){
+    if(on){
+      if(autopulseTimer) return;
+      pulseMotion();
+      autopulseTimer = setInterval(()=> pulseMotion(), 8000);
+    } else {
+      clearInterval(autopulseTimer); autopulseTimer = null;
+    }
+  }
+
+  // --- Wiring ---
+  controls.tapMotion.addEventListener('click', ()=> pulseMotion());
+  controls.autoPulse.addEventListener('change', (e)=> toggleAutoPulse(e.target.checked));
+
+  // Recompute on any change
+  document.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input', evaluate);
+    inp.addEventListener('change', evaluate);
+  });
+
+  // Clock + evaluation loop
+  setInterval(()=>{ clockPill.textContent = clockStr(); evaluate(); }, 1000);
+
+  // Initial render
+  evaluate();
+</script>
+</body>
+</html>
